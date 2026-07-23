@@ -8,12 +8,13 @@ config_version=5
 config/name="Ninja Arena"
 config/description="Duel d'arène ninja (prototype v1) — souls-like timing + techniques."
 run/main_scene="res://scenes/arena.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameBus="*res://scripts/game_bus.gd"
+InputSetup="*res://scripts/input_setup.gd"
 
 [display]
 

@@ -14,7 +14,23 @@ func _ready() -> void:
 	GameBus.fighter_stats_changed.connect(_on_stats)
 	GameBus.mudra_updated.connect(_on_mudra)
 	GameBus.special_ready.connect(_on_special_ready)
-	help.text = "P1: WASD + Espace | J/K mêlée | L kunai | Shift roll | I sub | U spéciale (après ↑↓←→)\nP2: Flèches + Ctrl | Z/X mêlée | C kunai | Num0 roll | V sub | B spéciale | R restart"
+	_style_bar(p1_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
+	_style_bar(p2_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
+	_style_bar(p1_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
+	_style_bar(p2_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
+	help.text = "P1: WASD+Espace | J coup | K katana | L kunai | Shift roll | I sub | U spéciale (↑↓←→)\nP2: Flèches+Ctrl | Z/X | C | Num0 | V | B  —  Manette: stick/D-pad, A saut, X/Y mêlée, B kunai, RB roll, LB sub, R3 spéciale | R restart"
+
+
+func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = fill
+	fill_style.set_corner_radius_all(2)
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = bg
+	bg_style.set_corner_radius_all(2)
+	bar.add_theme_stylebox_override("fill", fill_style)
+	bar.add_theme_stylebox_override("background", bg_style)
+	bar.show_percentage = false
 
 
 func _on_stats(fighter: Node) -> void:
