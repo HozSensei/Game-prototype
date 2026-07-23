@@ -9,7 +9,8 @@ Duel d'arène side-view, rythme **souls-like** (télégraphes, punition), fantas
 - Local 1v1 uniquement
 - 1 arène horizontale
 - 1 mannequin (Zegley), teintes P1/P2
-- Actions : move, jump, light, heavy, kunai, roll, substitute (téléport **court latéral**), 1 spéciale (↑↓←→ puis bouton)
+- Actions : move, jump, **coup (jab)**, **katana**, kunai, roll, substitute (téléport **court latéral**), spéciale (↑↓←→ puis bouton → **boule de feu**)
+- Manette supportée (P1 device 0, P2 device 1)
 - Ressource : chakra
 - Victoire : KO (PV à 0), restart R
 
