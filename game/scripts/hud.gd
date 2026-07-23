@@ -18,7 +18,7 @@ func _ready() -> void:
 	_style_bar(p2_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
 	_style_bar(p1_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
 	_style_bar(p2_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
-	help.text = "P1: WASD+Espace | J coup | K katana | L kunai | Shift roll | I sub | U spéciale (↑↓←→)\nP2: Flèches+Ctrl | Z/X | C | Num0 | V | B  —  Manette: stick/D-pad, A saut, X/Y mêlée, B kunai, RB roll, LB sub, R3 spéciale | R restart"
+	help.text = "P1: WASD+Espace | J coup | K katana | L kunai | O shuriken | Shift roll | I sub | U spéciale (↑↓←→)\nP2: Flèches+Ctrl | Z/X | C kunai | N shuriken | Num0 | V | B  —  Manette: A saut, X/Y mêlée, B kunai, L3 shuriken, RB/LB roll/sub, R3 spéciale | R restart"
 
 
 func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:

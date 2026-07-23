@@ -21,17 +21,21 @@ enum State { IDLE, RUN, JUMP, ATTACK, DODGE, SUBSTITUTE, HURT, DEAD, WALL_SLIDE 
 @export var heavy_damage: float = 22.0
 @export var special_damage: float = 36.0
 @export var kunai_chakra_cost: float = 12.0
+@export var shuriken_chakra_cost: float = 10.0
+@export var heavy_chakra_cost: float = 16.0
 @export var substitute_chakra_cost: float = 22.0
 @export var special_chakra_cost: float = 40.0
 @export var dodge_chakra_cost: float = 8.0
 @export var substitute_distance: float = 56.0
+@export var wall_jump_velocity: float = -300.0
+@export var wall_jump_push: float = 210.0
 
-const LIGHT_STARTUP := 0.08
-const LIGHT_ACTIVE := 0.10
-const LIGHT_RECOVERY := 0.18
-const HEAVY_STARTUP := 0.22
-const HEAVY_ACTIVE := 0.12
-const HEAVY_RECOVERY := 0.42
+const LIGHT_STARTUP := 0.06
+const LIGHT_ACTIVE := 0.14
+const LIGHT_RECOVERY := 0.16
+const HEAVY_STARTUP := 0.18
+const HEAVY_ACTIVE := 0.18
+const HEAVY_RECOVERY := 0.38
 const SPECIAL_STARTUP := 0.18
 const SPECIAL_ACTIVE := 0.16
 const SPECIAL_RECOVERY := 0.35
@@ -40,6 +44,7 @@ const DODGE_IFRAMES := 0.22
 const SUBSTITUTE_DURATION := 0.18
 const HURT_DURATION := 0.28
 const HITSTOP := 0.05
+const WALL_COYOTE := 0.12
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var body_collision: CollisionShape2D = $BodyCollision
@@ -62,11 +67,14 @@ var _attack_damage: float = 0.0
 var _hit_connected: bool = false
 var _spawn_pos: Vector2
 var _kunai_scene: PackedScene
+var _shuriken_scene: PackedScene
 var _fireball_scene: PackedScene
 var _log_scene: PackedScene
 var _was_on_floor: bool = true
 var _dir_pressed: Dictionary = {"left": false, "right": false, "up": false, "down": false}
 var _special_projectile_spawned: bool = false
+var _wall_dir: int = 0 # -1 mur à gauche, +1 mur à droite
+var _wall_coyote: float = 0.0
 const SPRITE_Y_48 := -15.0
 const SPRITE_Y_64 := -15.0
 
@@ -77,6 +85,7 @@ func _ready() -> void:
 	_prefix = "p1" if player_id == 1 else "p2"
 	_spawn_pos = global_position
 	_kunai_scene = preload("res://scenes/kunai.tscn")
+	_shuriken_scene = preload("res://scenes/shuriken.tscn")
 	_fireball_scene = preload("res://scenes/fireball.tscn")
 	_log_scene = preload("res://scenes/substitution_log.tscn")
 	sprite.sprite_frames = SpriteSheets.build()
@@ -96,7 +105,7 @@ func _ready() -> void:
 	_mudra.special_armed.connect(_on_mudra_armed)
 	_apply_facing()
 	_emit_stats()
-
+	_resize_hitbox(false)
 
 func _physics_process(delta: float) -> void:
 	if not GameBus.match_active and state != State.DEAD:
@@ -181,6 +190,9 @@ func _handle_action_inputs() -> void:
 	if Input.is_action_just_pressed("%s_dodge" % _prefix):
 		_try_dodge()
 		return
+	if Input.is_action_just_pressed("%s_shuriken" % _prefix):
+		_try_throw_shuriken()
+		return
 	if Input.is_action_just_pressed("%s_throw" % _prefix):
 		_try_throw()
 		return
@@ -239,31 +251,83 @@ func _process_air(delta: float) -> void:
 		facing = 1 if axis > 0 else -1
 		_apply_facing()
 	move_and_slide()
+	_update_wall_memory()
+
 	if is_on_floor():
+		_wall_coyote = 0.0
 		_enter_state(State.IDLE)
 		return
-	# Wall slide uniquement en descente — évite le "super jump" collé au mur.
-	if velocity.y >= 0.0 and is_on_wall() and axis == facing:
-		_enter_state(State.WALL_SLIDE)
+
+	if Input.is_action_just_pressed("%s_jump" % _prefix) and _wall_coyote > 0.0 and chakra >= 5.0:
+		_do_wall_jump()
+		return
+
+	# Accrocher le mur en descente / près du sommet (pas pendant la montée explosive).
+	if is_on_wall() and axis != 0 and velocity.y > -90.0:
+		var wall := _detect_wall_dir()
+		if wall != 0 and axis == wall:
+			_wall_dir = wall
+			_enter_state(State.WALL_SLIDE)
 
 
 func _process_wall_slide(delta: float) -> void:
 	var axis := _move_axis()
-	# Pas de wall-jump boost : on glisse seulement, saut = petit écartement.
-	velocity.x = axis * move_speed * 0.15
-	velocity.y = minf(velocity.y + gravity * 0.55 * delta, 160.0)
-	chakra = maxf(0.0, chakra - 10.0 * delta)
+	_wall_dir = _detect_wall_dir()
+	if _wall_dir == 0:
+		_wall_dir = facing
+
+	velocity.x = _wall_dir * 20.0
+	velocity.y = minf(velocity.y + gravity * 0.5 * delta, 180.0)
+	chakra = maxf(0.0, chakra - 8.0 * delta)
 	move_and_slide()
-	if is_on_floor() or not is_on_wall() or chakra <= 0.0 or velocity.y < 0.0:
-		_enter_state(State.JUMP if not is_on_floor() else State.IDLE)
+	_update_wall_memory()
+
+	if is_on_floor():
+		_enter_state(State.IDLE)
 		return
-	if Input.is_action_just_pressed("%s_jump" % _prefix) and chakra >= 5.0:
-		chakra -= 5.0
-		facing = -facing
-		_apply_facing()
-		# Petit push-off, pas un second saut plein.
-		velocity = Vector2(facing * move_speed * 1.1, jump_velocity * 0.45)
+	if not is_on_wall() or chakra <= 0.0:
 		_enter_state(State.JUMP)
+		return
+
+	# Pousser à l'opposé = lâcher le mur.
+	if axis != 0 and axis != _wall_dir:
+		_enter_state(State.JUMP)
+		return
+
+	if Input.is_action_just_pressed("%s_jump" % _prefix) and chakra >= 5.0:
+		_do_wall_jump()
+
+
+func _do_wall_jump() -> void:
+	chakra -= 5.0
+	var away := -_wall_dir
+	if away == 0:
+		away = -facing
+	facing = away
+	_apply_facing()
+	velocity = Vector2(away * wall_jump_push, wall_jump_velocity)
+	_wall_coyote = 0.0
+	_wall_dir = 0
+	_enter_state(State.JUMP)
+
+
+func _detect_wall_dir() -> int:
+	if not is_on_wall():
+		return 0
+	var count := get_slide_collision_count()
+	for i in count:
+		var n: Vector2 = get_slide_collision(i).get_normal()
+		if absf(n.x) > 0.7:
+			return -int(signf(n.x))
+	return facing
+
+
+func _update_wall_memory() -> void:
+	if is_on_wall():
+		_wall_dir = _detect_wall_dir()
+		_wall_coyote = WALL_COYOTE
+	else:
+		_wall_coyote = maxf(0.0, _wall_coyote - get_physics_process_delta_time())
 
 
 func _process_attack(delta: float) -> void:
@@ -299,6 +363,7 @@ func _process_attack(delta: float) -> void:
 	elif t < startup + active:
 		hitbox_shape.disabled = false
 		_position_hitbox()
+		_poll_melee_hits()
 	else:
 		hitbox_shape.disabled = true
 
@@ -335,9 +400,14 @@ func _process_hurt(delta: float) -> void:
 
 
 func _start_attack(kind: String) -> void:
+	if kind == "heavy":
+		if chakra < heavy_chakra_cost:
+			return
+		chakra -= heavy_chakra_cost
 	_attack_kind = kind
 	_hit_connected = false
 	_special_projectile_spawned = false
+	_resize_hitbox(kind == "heavy")
 	match kind:
 		"heavy":
 			_attack_damage = heavy_damage
@@ -397,9 +467,19 @@ func _try_throw() -> void:
 		return
 	chakra -= kunai_chakra_cost
 	var kunai := _kunai_scene.instantiate()
-	kunai.setup(self, facing)
+	kunai.setup(self, facing, 0) # Kind.KUNAI
 	kunai.global_position = spawn_point.global_position
 	get_parent().add_child(kunai)
+
+
+func _try_throw_shuriken() -> void:
+	if chakra < shuriken_chakra_cost:
+		return
+	chakra -= shuriken_chakra_cost
+	var star := _shuriken_scene.instantiate()
+	star.setup(self, facing, 1) # Kind.SHURIKEN
+	star.global_position = spawn_point.global_position
+	get_parent().add_child(star)
 
 
 func _try_special() -> void:
@@ -453,13 +533,33 @@ func _apply_facing() -> void:
 
 
 func _position_hitbox() -> void:
-	var reach := 24.0
+	var reach := 28.0
 	match _attack_kind:
 		"heavy":
-			reach = 36.0
+			reach = 42.0
 		_:
-			reach = 24.0
-	hitbox.position = Vector2(reach * facing, -12.0)
+			reach = 28.0
+	hitbox.position = Vector2(reach * facing, -14.0)
+
+
+func _resize_hitbox(heavy: bool) -> void:
+	var shape := hitbox_shape.shape as RectangleShape2D
+	if shape == null:
+		shape = RectangleShape2D.new()
+		hitbox_shape.shape = shape
+	if heavy:
+		shape.size = Vector2(38, 30)
+	else:
+		shape.size = Vector2(30, 26)
+
+
+func _poll_melee_hits() -> void:
+	if _hit_connected or hitbox_shape.disabled:
+		return
+	for area in hitbox.get_overlapping_areas():
+		_on_hitbox_area_entered(area)
+		if _hit_connected:
+			return
 
 
 func _on_hurtbox_area_entered(area: Area2D) -> void:

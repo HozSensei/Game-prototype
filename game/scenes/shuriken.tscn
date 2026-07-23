@@ -1,18 +1,18 @@
-[gd_scene load_steps=3 format=3 uid="uid://bkunai001"]
+[gd_scene load_steps=3 format=3 uid="uid://bshuriken001"]
 
 [ext_resource type="Script" path="res://scripts/projectile.gd" id="1_proj"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_kunai"]
-size = Vector2(14, 6)
+[sub_resource type="CircleShape2D" id="CircleShape2D_shuriken"]
+radius = 6.0
 
-[node name="Kunai" type="Area2D"]
+[node name="Shuriken" type="Area2D"]
 collision_layer = 16
 collision_mask = 9
 script = ExtResource("1_proj")
-kind = 0
+kind = 1
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 texture_filter = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_kunai")
+shape = SubResource("CircleShape2D_shuriken")

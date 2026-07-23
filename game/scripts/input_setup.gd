@@ -24,6 +24,7 @@ func _bind_pad(device: int, prefix: String) -> void:
 	_add_button(prefix + "_attack_light", device, JOY_BUTTON_X)
 	_add_button(prefix + "_attack_heavy", device, JOY_BUTTON_Y)
 	_add_button(prefix + "_throw", device, JOY_BUTTON_B)
+	_add_button(prefix + "_shuriken", device, JOY_BUTTON_LEFT_STICK)
 	_add_button(prefix + "_dodge", device, JOY_BUTTON_RIGHT_SHOULDER)
 	_add_button(prefix + "_substitute", device, JOY_BUTTON_LEFT_SHOULDER)
 	_add_button(prefix + "_special", device, JOY_BUTTON_RIGHT_STICK)
