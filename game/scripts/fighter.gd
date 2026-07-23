@@ -87,7 +87,7 @@ func _ready() -> void:
 	health = max_health
 	chakra = max_chakra
 	_prefix = "p1" if player_id == 1 else "p2"
-	_pad_device = 0 if player_id == 1 else 1
+	_pad_device = InputSetup.get_device_for_player(player_id)
 	_spawn_pos = global_position
 	_kunai_scene = preload("res://scenes/kunai.tscn")
 	_shuriken_scene = preload("res://scenes/shuriken.tscn")
@@ -108,11 +108,16 @@ func _ready() -> void:
 	hitbox.area_entered.connect(_on_hitbox_area_entered)
 	_mudra.sequence_changed.connect(_on_mudra_sequence)
 	_mudra.special_armed.connect(_on_mudra_armed)
+	InputSetup.pads_changed.connect(_on_pads_changed)
 	aim_dir = Vector2(facing, 0)
 	_apply_facing()
 	_emit_stats()
 	_resize_hitbox(false)
 	_update_aim(0.0)
+
+
+func _on_pads_changed(_p1: int, _p2: int) -> void:
+	_pad_device = InputSetup.get_device_for_player(player_id)
 
 
 func _physics_process(delta: float) -> void:
@@ -507,32 +512,44 @@ func _update_aim(_delta: float) -> void:
 
 
 func _compute_aim_dir() -> Vector2:
-	var stick := Vector2(
-		Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_X),
-		Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_Y)
-	)
-	if stick.length() >= AIM_STICK_DEADZONE:
-		return stick.normalized()
+	_pad_device = InputSetup.get_device_for_player(player_id)
+	if _pad_device >= 0:
+		var stick := Vector2(
+			Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_X),
+			Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_Y)
+		)
+		if stick.length() >= AIM_STICK_DEADZONE:
+			return stick.normalized()
+		# Pad branché : pas de souris (évite que la souris pilote P1 en duel 2 pads).
+		var vertical := 0.0
+		if Input.is_action_pressed("%s_up" % _prefix):
+			vertical -= 1.0
+		if Input.is_action_pressed("%s_down" % _prefix):
+			vertical += 1.0
+		var keyed := Vector2(float(facing), vertical)
+		if keyed.length_squared() < 0.01:
+			keyed = Vector2(float(facing), 0.0)
+		return keyed.normalized()
 
-	var use_mouse := player_id == 1 or not _pad_connected(_pad_device)
-	if use_mouse:
+	# Sans pad : souris (surtout P1) ou clavier.
+	if player_id == 1:
 		var to_mouse := get_global_mouse_position() - global_position
 		if to_mouse.length() >= 12.0:
 			return to_mouse.normalized()
 
-	var vertical := 0.0
+	var v := 0.0
 	if Input.is_action_pressed("%s_up" % _prefix):
-		vertical -= 1.0
+		v -= 1.0
 	if Input.is_action_pressed("%s_down" % _prefix):
-		vertical += 1.0
-	var keyed := Vector2(float(facing), vertical)
-	if keyed.length_squared() < 0.01:
-		keyed = Vector2(float(facing), 0.0)
-	return keyed.normalized()
+		v += 1.0
+	var kb := Vector2(float(facing), v)
+	if kb.length_squared() < 0.01:
+		kb = Vector2(float(facing), 0.0)
+	return kb.normalized()
 
 
 func _pad_connected(device: int) -> bool:
-	return device in Input.get_connected_joypads()
+	return device >= 0 and device in Input.get_connected_joypads()
 
 
 func _try_special() -> void:

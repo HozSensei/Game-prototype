@@ -1,16 +1,78 @@
 extends Node
-## Bindings manette runtime : P1 = pad 0, P2 = pad 1.
+## Assigne dynamiquement jusqu'à 2 manettes → P1 / P2.
+
+signal pads_changed(p1_device: int, p2_device: int)
+
+var p1_device: int = -1
+var p2_device: int = -1
+
+const ACTIONS := [
+	"left", "right", "up", "down",
+	"jump", "attack_light", "attack_heavy",
+	"throw", "shuriken", "dodge", "substitute", "special",
+]
 
 
 func _ready() -> void:
-	_bind_pad(0, "p1")
-	_bind_pad(1, "p2")
-	_add_button("restart_match", 0, JOY_BUTTON_START)
-	_add_button("restart_match", 1, JOY_BUTTON_START)
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	_refresh_pads()
+
+
+func get_device_for_player(player_id: int) -> int:
+	return p1_device if player_id == 1 else p2_device
+
+
+func is_pad_assigned(player_id: int) -> bool:
+	return get_device_for_player(player_id) >= 0
+
+
+func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
+	_refresh_pads()
+
+
+func _refresh_pads() -> void:
+	_clear_joy_events()
+	var pads: Array[int] = []
+	for id in Input.get_connected_joypads():
+		pads.append(int(id))
+	pads.sort()
+
+	p1_device = pads[0] if pads.size() >= 1 else -1
+	p2_device = pads[1] if pads.size() >= 2 else -1
+
+	if p1_device >= 0:
+		_bind_pad(p1_device, "p1")
+		_add_button("restart_match", p1_device, JOY_BUTTON_START)
+	if p2_device >= 0:
+		_bind_pad(p2_device, "p2")
+		_add_button("restart_match", p2_device, JOY_BUTTON_START)
+
+	pads_changed.emit(p1_device, p2_device)
+	print("Pads: P1=", p1_device, " (", _pad_name(p1_device), ") | P2=", p2_device, " (", _pad_name(p2_device), ")")
+
+
+func _pad_name(device: int) -> String:
+	if device < 0:
+		return "aucune"
+	return Input.get_joy_name(device)
+
+
+func _clear_joy_events() -> void:
+	for prefix in ["p1", "p2"]:
+		for action_suffix in ACTIONS:
+			var action := "%s_%s" % [prefix, action_suffix]
+			if not InputMap.has_action(action):
+				continue
+			for ev in InputMap.action_get_events(action):
+				if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+					InputMap.action_erase_event(action, ev)
+	if InputMap.has_action("restart_match"):
+		for ev in InputMap.action_get_events("restart_match"):
+			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+				InputMap.action_erase_event("restart_match", ev)
 
 
 func _bind_pad(device: int, prefix: String) -> void:
-	# Stick + D-pad
 	_add_axis(prefix + "_left", device, JOY_AXIS_LEFT_X, -1.0)
 	_add_axis(prefix + "_right", device, JOY_AXIS_LEFT_X, 1.0)
 	_add_axis(prefix + "_up", device, JOY_AXIS_LEFT_Y, -1.0)
@@ -19,7 +81,6 @@ func _bind_pad(device: int, prefix: String) -> void:
 	_add_button(prefix + "_right", device, JOY_BUTTON_DPAD_RIGHT)
 	_add_button(prefix + "_up", device, JOY_BUTTON_DPAD_UP)
 	_add_button(prefix + "_down", device, JOY_BUTTON_DPAD_DOWN)
-	# Face buttons (layout Xbox / sud = A, est = B, ouest = X, nord = Y)
 	_add_button(prefix + "_jump", device, JOY_BUTTON_A)
 	_add_button(prefix + "_attack_light", device, JOY_BUTTON_X)
 	_add_button(prefix + "_attack_heavy", device, JOY_BUTTON_Y)

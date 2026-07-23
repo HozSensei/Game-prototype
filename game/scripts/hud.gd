@@ -1,12 +1,14 @@
 extends CanvasLayer
-## HUD vie / chakra / mudras.
+## HUD vie / chakra / mudras / statut manettes.
 
 @onready var p1_hp: ProgressBar = $Root/P1/HP
 @onready var p1_chakra: ProgressBar = $Root/P1/Chakra
 @onready var p1_mudra: Label = $Root/P1/Mudra
+@onready var p1_title: Label = $Root/P1/Title
 @onready var p2_hp: ProgressBar = $Root/P2/HP
 @onready var p2_chakra: ProgressBar = $Root/P2/Chakra
 @onready var p2_mudra: Label = $Root/P2/Mudra
+@onready var p2_title: Label = $Root/P2/Title
 @onready var help: Label = $Root/Help
 
 
@@ -14,11 +16,13 @@ func _ready() -> void:
 	GameBus.fighter_stats_changed.connect(_on_stats)
 	GameBus.mudra_updated.connect(_on_mudra)
 	GameBus.special_ready.connect(_on_special_ready)
+	InputSetup.pads_changed.connect(_on_pads_changed)
 	_style_bar(p1_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
 	_style_bar(p2_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
 	_style_bar(p1_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
 	_style_bar(p2_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
-	help.text = "P1: WASD+Espace | Souris = viseur | J coup | K katana | L kunai | O shuriken | Shift roll | I sub | U spéciale\nP2: Flèches+Ctrl | Stick droit = viseur | Z/X | C/N | Num0 | V | B  —  Manette: stick droit vise, A saut, X/Y mêlée, B/L3 jets, RB/LB, R3 | R restart"
+	help.text = "2 manettes OK : 1re détectée = P1, 2e = P2 | Stick G move, Stick D viseur | A saut | X/Y mêlée | B kunai | L3 shuriken | RB roll | LB sub | R3 spéciale | Start restart\nClavier toujours dispo (P1 WASD… / P2 flèches…)"
+	_on_pads_changed(InputSetup.p1_device, InputSetup.p2_device)
 
 
 func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:
@@ -31,6 +35,17 @@ func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:
 	bar.add_theme_stylebox_override("fill", fill_style)
 	bar.add_theme_stylebox_override("background", bg_style)
 	bar.show_percentage = false
+
+
+func _on_pads_changed(p1_device: int, p2_device: int) -> void:
+	p1_title.text = "Joueur 1" + _pad_suffix(p1_device)
+	p2_title.text = "Joueur 2" + _pad_suffix(p2_device)
+
+
+func _pad_suffix(device: int) -> String:
+	if device < 0:
+		return "  (clavier)"
+	return "  [%s]" % Input.get_joy_name(device)
 
 
 func _on_stats(fighter: Node) -> void:
