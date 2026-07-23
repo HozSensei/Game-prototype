@@ -52,14 +52,17 @@ const WALL_COYOTE := 0.12
 @onready var hitbox: Area2D = $Hitbox
 @onready var hitbox_shape: CollisionShape2D = $Hitbox/CollisionShape2D
 @onready var spawn_point: Marker2D = $ProjectileSpawn
+@onready var aim_reticle: Node2D = $AimReticle
 
 var health: float
 var chakra: float
 var state: State = State.IDLE
 var invulnerable: bool = false
 var attack_locked: bool = false
+var aim_dir: Vector2 = Vector2.RIGHT
 
 var _prefix: String = "p1"
+var _pad_device: int = 0
 var _mudra := MudraBuffer.new()
 var _state_time: float = 0.0
 var _attack_kind: String = ""
@@ -77,12 +80,14 @@ var _wall_dir: int = 0 # -1 mur à gauche, +1 mur à droite
 var _wall_coyote: float = 0.0
 const SPRITE_Y_48 := -15.0
 const SPRITE_Y_64 := -15.0
+const AIM_STICK_DEADZONE := 0.28
 
 
 func _ready() -> void:
 	health = max_health
 	chakra = max_chakra
 	_prefix = "p1" if player_id == 1 else "p2"
+	_pad_device = 0 if player_id == 1 else 1
 	_spawn_pos = global_position
 	_kunai_scene = preload("res://scenes/kunai.tscn")
 	_shuriken_scene = preload("res://scenes/shuriken.tscn")
@@ -103,9 +108,12 @@ func _ready() -> void:
 	hitbox.area_entered.connect(_on_hitbox_area_entered)
 	_mudra.sequence_changed.connect(_on_mudra_sequence)
 	_mudra.special_armed.connect(_on_mudra_armed)
+	aim_dir = Vector2(facing, 0)
 	_apply_facing()
 	_emit_stats()
 	_resize_hitbox(false)
+	_update_aim(0.0)
+
 
 func _physics_process(delta: float) -> void:
 	if not GameBus.match_active and state != State.DEAD:
@@ -117,6 +125,7 @@ func _physics_process(delta: float) -> void:
 	if state != State.DEAD:
 		chakra = minf(max_chakra, chakra + chakra_regen * delta)
 
+	_update_aim(delta)
 	_poll_mudra_directions()
 	_handle_action_inputs()
 
@@ -426,7 +435,11 @@ func _start_attack(kind: String) -> void:
 
 func _spawn_fireball() -> void:
 	var ball := _fireball_scene.instantiate()
-	ball.setup(self, facing)
+	var dir := aim_dir if aim_dir.length_squared() > 0.01 else Vector2(facing, 0)
+	if ball.has_method("setup_aimed"):
+		ball.setup_aimed(self, dir)
+	else:
+		ball.setup(self, facing)
 	ball.global_position = spawn_point.global_position
 	get_parent().add_child(ball)
 
@@ -467,7 +480,7 @@ func _try_throw() -> void:
 		return
 	chakra -= kunai_chakra_cost
 	var kunai := _kunai_scene.instantiate()
-	kunai.setup(self, facing, 0) # Kind.KUNAI
+	kunai.setup(self, aim_dir, 0)
 	kunai.global_position = spawn_point.global_position
 	get_parent().add_child(kunai)
 
@@ -477,9 +490,49 @@ func _try_throw_shuriken() -> void:
 		return
 	chakra -= shuriken_chakra_cost
 	var star := _shuriken_scene.instantiate()
-	star.setup(self, facing, 1) # Kind.SHURIKEN
+	star.setup(self, aim_dir, 1)
 	star.global_position = spawn_point.global_position
 	get_parent().add_child(star)
+
+
+func _update_aim(_delta: float) -> void:
+	if state == State.DEAD:
+		aim_reticle.visible = false
+		return
+	aim_reticle.visible = true
+	aim_dir = _compute_aim_dir()
+	spawn_point.position = Vector2(aim_dir.x * 16.0, -18.0 + aim_dir.y * 10.0)
+	if aim_reticle.has_method("set_aim"):
+		aim_reticle.set_aim(aim_dir, 320.0, 520.0)
+
+
+func _compute_aim_dir() -> Vector2:
+	var stick := Vector2(
+		Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_X),
+		Input.get_joy_axis(_pad_device, JOY_AXIS_RIGHT_Y)
+	)
+	if stick.length() >= AIM_STICK_DEADZONE:
+		return stick.normalized()
+
+	var use_mouse := player_id == 1 or not _pad_connected(_pad_device)
+	if use_mouse:
+		var to_mouse := get_global_mouse_position() - global_position
+		if to_mouse.length() >= 12.0:
+			return to_mouse.normalized()
+
+	var vertical := 0.0
+	if Input.is_action_pressed("%s_up" % _prefix):
+		vertical -= 1.0
+	if Input.is_action_pressed("%s_down" % _prefix):
+		vertical += 1.0
+	var keyed := Vector2(float(facing), vertical)
+	if keyed.length_squared() < 0.01:
+		keyed = Vector2(float(facing), 0.0)
+	return keyed.normalized()
+
+
+func _pad_connected(device: int) -> bool:
+	return device in Input.get_connected_joypads()
 
 
 func _try_special() -> void:

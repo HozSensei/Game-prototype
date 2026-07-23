@@ -1,38 +1,45 @@
 extends Area2D
-## Boule de feu (spéciale type Katon).
+## Boule de feu (spéciale type Katon) — aussi aimable + légère gravité.
 
-@export var speed: float = 220.0
+@export var speed: float = 260.0
+@export var fall_gravity: float = 280.0
 @export var damage: float = 34.0
-@export var lifetime: float = 2.0
+@export var lifetime: float = 2.2
 
-var _dir: int = 1
+var velocity: Vector2 = Vector2.RIGHT * 260.0
 var _owner: Node = null
 var _spent: bool = false
 
 
 func setup(owner_fighter: Node, facing: int) -> void:
+	setup_aimed(owner_fighter, Vector2(facing, 0))
+
+
+func setup_aimed(owner_fighter: Node, aim_dir: Vector2) -> void:
 	_owner = owner_fighter
-	_dir = facing
-	scale.x = absf(scale.x) * facing
+	var dir := aim_dir
+	if dir.length_squared() < 0.0001:
+		dir = Vector2.RIGHT
+	velocity = dir.normalized() * speed
 
 
 func _ready() -> void:
 	add_to_group("fireball_hit")
-	add_to_group("kunai_hit") # réutilise le filtre projectile côté hurtbox
+	add_to_group("kunai_hit")
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	get_tree().create_timer(lifetime).timeout.connect(queue_free)
 
 
 func _physics_process(delta: float) -> void:
-	position.x += speed * _dir * delta
-	rotation += delta * 8.0 * _dir
+	velocity.y += fall_gravity * delta
+	position += velocity * delta
+	rotation = velocity.angle()
 
 
 func _on_body_entered(body: Node) -> void:
 	if body == _owner:
 		return
-	# Mur / sol
 	if body is StaticBody2D:
 		queue_free()
 
@@ -47,5 +54,6 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	if fighter.has_method("take_hit"):
 		_spent = true
-		fighter.take_hit(damage, Vector2(_dir * 160.0, -80.0), _dir)
+		var knock := velocity.normalized() if velocity.length_squared() > 1.0 else Vector2.RIGHT
+		fighter.take_hit(damage, knock * 160.0 + Vector2(0, -80.0), int(signf(knock.x)))
 		queue_free()
