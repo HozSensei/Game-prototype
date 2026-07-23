@@ -1,0 +1,47 @@
+[gd_scene load_steps=5 format=3 uid="uid://bfighter001"]
+
+[ext_resource type="Script" path="res://scripts/fighter.gd" id="1_fighter"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(14, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
+size = Vector2(16, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
+size = Vector2(22, 18)
+
+[node name="Fighter" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+floor_stop_on_slope = true
+script = ExtResource("1_fighter")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -24)
+texture_filter = 0
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+position = Vector2(0, -14)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 8
+collision_mask = 20
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+position = Vector2(0, -15)
+shape = SubResource("RectangleShape2D_hurt")
+
+[node name="Hitbox" type="Area2D" parent="."]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+position = Vector2(22, -12)
+shape = SubResource("RectangleShape2D_hit")
+disabled = true
+
+[node name="ProjectileSpawn" type="Marker2D" parent="."]
+position = Vector2(14, -18)
