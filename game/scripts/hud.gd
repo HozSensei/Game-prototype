@@ -43,9 +43,9 @@ func _on_mode_changed(mode_name: String, _pad_count: int) -> void:
 		"solo_kbm":
 			help.text = "SOLO clavier: ZQSD | Souris vise | LMB mêlée | RMB jet | Ctrl stance (↑↓←→ sphère / ↑↑ mur) + LMB | Q munition | F katana | E sub | Shift roll | Espace\nBranche 1 manette pour jouer au pad, 2 manettes pour le duel."
 		"solo_pad":
-			help.text = "SOLO manette: StickG move | StickD vise | LB stance + D-pad + RT/A confirm | X/Y mêlée | B jet | RB roll | L3 sub | R3 munition | Start restart\nDébranche la manette pour repasser clavier/souris."
+			help.text = "SOLO manette: StickG move | StickD vise | LB stance + D-pad + RT/A confirm | X/Y mêlée | B jet | RB roll | LT sub | R3 munition | Start restart\nDébranche la manette pour repasser clavier/souris."
 		_:
-			help.text = "DUEL 2 manettes: LB stance + D-pad + RT | StickD vise | X/Y mêlée | B jet | RB roll | L3 sub | R3 munition | Start restart"
+			help.text = "DUEL 2 manettes: LB stance + D-pad + RT | StickD vise | X/Y mêlée | B jet | RB roll | LT sub | R3 munition | Start restart"
 
 
 func _on_pads_changed(p1_device: int, p2_device: int) -> void:

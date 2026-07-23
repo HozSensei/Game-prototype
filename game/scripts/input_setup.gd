@@ -164,9 +164,9 @@ func _bind_pad(device: int, prefix: String) -> void:
 	_add_button(prefix + "_throw", device, JOY_BUTTON_B)
 	_add_button(prefix + "_cycle_ammo", device, JOY_BUTTON_RIGHT_STICK)
 	_add_button(prefix + "_dodge", device, JOY_BUTTON_RIGHT_SHOULDER)
-	_add_button(prefix + "_substitute", device, JOY_BUTTON_LEFT_STICK)
-	_add_button(prefix + "_stance", device, JOY_BUTTON_LEFT_SHOULDER)
-	_add_axis(prefix + "_special_confirm", device, JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	_add_axis(prefix + "_substitute", device, JOY_AXIS_TRIGGER_LEFT, 1.0) # LT
+	_add_button(prefix + "_stance", device, JOY_BUTTON_LEFT_SHOULDER) # LB
+	_add_axis(prefix + "_special_confirm", device, JOY_AXIS_TRIGGER_RIGHT, 1.0) # RT
 	_add_button(prefix + "_special_confirm", device, JOY_BUTTON_A)
 
 
