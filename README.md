@@ -26,13 +26,12 @@ Moteur : **Godot 4.3+** — ouvrir le dossier `game/`.
 
 Spéciale : enchaîner **haut, bas, gauche, droite**, puis la touche spéciale dans les **3 secondes** (coût chakra).
 
-## Contenu v1
+## Modes
 
-- Solo clavier/souris **ou** duel 2 manettes (pas de 2 joueurs clavier)
-- Stance spéciale type Helldivers (Ctrl/LB + combo + confirm)
-- Techniques : sphère (↑↓←→) / mur défensif (↑↑)
-- Munitions kunai/shuriken ramassables
-- Viseur discret (arc + flèche)
+- **0 manette** → solo **clavier / souris**
+- **1 manette** → solo **manette**
+- **2 manettes** → duel (P1 + P2)
+- Pas de 2 joueurs sur le même clavier
 
 
 ## Assets
