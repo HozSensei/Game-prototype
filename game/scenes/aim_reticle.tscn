@@ -5,10 +5,10 @@
 [node name="AimReticle" type="Node2D"]
 script = ExtResource("1_aim")
 
-[node name="Arrow" type="Polygon2D" parent="."]
-polygon = PackedVector2Array(18, -4, 34, 0, 18, 4, 20, 0)
-color = Color(1, 0.92, 0.45, 0.9)
-
 [node name="Arc" type="Line2D" parent="."]
-width = 1.5
-default_color = Color(1, 1, 1, 0.35)
+width = 1.25
+default_color = Color(1, 1, 1, 0.28)
+
+[node name="Arrow" type="Polygon2D" parent="."]
+color = Color(1, 0.95, 0.75, 0.55)
+polygon = PackedVector2Array(4, 0, -3, -2.5, -3, 2.5)

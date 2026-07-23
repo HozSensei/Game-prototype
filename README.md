@@ -28,13 +28,12 @@ Spéciale : enchaîner **haut, bas, gauche, droite**, puis la touche spéciale d
 
 ## Contenu v1
 
-- 1 arène (sol, plateformes, murs)
-- Combat mêlée : coup (jab) / katana
-- Kunai, roll, substitution latérale + bout de bois
-- Spéciale mudras → **boule de feu** (Katon)
-- Chakra (coûts + régénération)
-- HUD vie / chakra / mudras
-- Manette : P1 pad0 / P2 pad1
+- Solo clavier/souris **ou** duel 2 manettes (pas de 2 joueurs clavier)
+- Stance spéciale type Helldivers (Ctrl/LB + combo + confirm)
+- Techniques : sphère (↑↓←→) / mur défensif (↑↑)
+- Munitions kunai/shuriken ramassables
+- Viseur discret (arc + flèche)
+
 
 ## Assets
 

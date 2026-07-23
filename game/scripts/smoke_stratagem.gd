@@ -1,0 +1,18 @@
+extends SceneTree
+func _initialize(): call_deferred("r")
+func r():
+	var m = MudraBuffer.new()
+	m.push_direction("up", 1.0)
+	m.push_direction("up", 1.1)
+	print("defense armed=", m.is_armed(), " tech=", m.armed_technique)
+	m.reset()
+	m.push_direction("up", 2.0)
+	m.push_direction("down", 2.1)
+	m.push_direction("left", 2.2)
+	m.push_direction("right", 2.3)
+	print("offense armed=", m.is_armed(), " tech=", m.armed_technique)
+	var wall = load("res://scenes/chakra_wall.tscn").instantiate()
+	root.add_child(wall)
+	print("wall hp=", wall.hp)
+	print("STRAT PASS")
+	quit(0)
