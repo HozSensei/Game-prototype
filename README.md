@@ -26,15 +26,13 @@ Moteur : **Godot 4.3+** — ouvrir le dossier `game/`.
 
 Spéciale : enchaîner **haut, bas, gauche, droite**, puis la touche spéciale dans les **3 secondes** (coût chakra).
 
-## Contenu v1
+## Modes
 
-- 1 arène (sol, plateformes, murs)
-- Combat mêlée : coup (jab) / katana
-- Kunai, roll, substitution latérale + bout de bois
-- Spéciale mudras → **boule de feu** (Katon)
-- Chakra (coûts + régénération)
-- HUD vie / chakra / mudras
-- Manette : P1 pad0 / P2 pad1
+- **0 manette** → solo **clavier / souris**
+- **1 manette** → solo **manette**
+- **2 manettes** → duel (P1 + P2)
+- Pas de 2 joueurs sur le même clavier
+
 
 ## Assets
 

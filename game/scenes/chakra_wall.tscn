@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://bwall001"]
+
+[ext_resource type="Script" path="res://scripts/chakra_wall.gd" id="1_wall"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(14, 40)
+
+[node name="ChakraWall" type="StaticBody2D"]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1_wall")
+
+[node name="Body" type="Polygon2D" parent="."]
+color = Color(0.35, 0.75, 1, 0.75)
+polygon = PackedVector2Array(-7, -20, 7, -20, 7, 20, -7, 20)
+
+[node name="Edge" type="Polygon2D" parent="."]
+color = Color(0.7, 0.95, 1, 0.5)
+polygon = PackedVector2Array(-7, -20, -5, -20, -5, 20, -7, 20)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 0)
+shape = SubResource("RectangleShape2D_wall")

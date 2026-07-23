@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3 uid="uid://bpickup001"]
+
+[ext_resource type="Script" path="res://scripts/ammo_pickup.gd" id="1_pickup"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_pick"]
+radius = 10.0
+
+[node name="AmmoPickup" type="Area2D"]
+collision_layer = 0
+collision_mask = 2
+monitoring = true
+monitorable = false
+script = ExtResource("1_pickup")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_pick")

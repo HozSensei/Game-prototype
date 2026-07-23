@@ -1,15 +1,16 @@
-[gd_scene load_steps=5 format=3 uid="uid://bfighter001"]
+[gd_scene load_steps=6 format=3 uid="uid://bfighter001"]
 
 [ext_resource type="Script" path="res://scripts/fighter.gd" id="1_fighter"]
+[ext_resource type="PackedScene" uid="uid://baim001" path="res://scenes/aim_reticle.tscn" id="2_aim"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
 size = Vector2(14, 28)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hurt"]
-size = Vector2(16, 30)
+size = Vector2(20, 32)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
-size = Vector2(26, 20)
+size = Vector2(30, 26)
 
 [node name="Fighter" type="CharacterBody2D"]
 collision_layer = 2
@@ -47,3 +48,16 @@ disabled = true
 
 [node name="ProjectileSpawn" type="Marker2D" parent="."]
 position = Vector2(16, -18)
+
+[node name="AimReticle" parent="." instance=ExtResource("2_aim")]
+position = Vector2(0, -18)
+
+[node name="StratagemLabel" type="Label" parent="."]
+offset_left = -60.0
+offset_top = -52.0
+offset_right = 60.0
+offset_bottom = -36.0
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+text = ""
+

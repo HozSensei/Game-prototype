@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://baim001"]
+
+[ext_resource type="Script" path="res://scripts/aim_reticle.gd" id="1_aim"]
+
+[node name="AimReticle" type="Node2D"]
+script = ExtResource("1_aim")
+
+[node name="Arc" type="Line2D" parent="."]
+width = 1.25
+default_color = Color(1, 1, 1, 0.28)
+
+[node name="Arrow" type="Polygon2D" parent="."]
+color = Color(1, 0.95, 0.75, 0.55)
+polygon = PackedVector2Array(4, 0, -3, -2.5, -3, 2.5)
