@@ -736,10 +736,10 @@ func _update_stratagem_visual() -> void:
 			"right": symbols.append("→")
 	var text := " ".join(symbols)
 	if _mudra.armed_technique == "offense":
-		text += "  [OFF] LMB/RT"
+		text += "  [OFF] LMB/X"
 		stratagem_label.modulate = Color(1.0, 0.55, 0.25)
 	elif _mudra.armed_technique == "defense":
-		text += "  [DEF] LMB/RT"
+		text += "  [DEF] LMB/X"
 		stratagem_label.modulate = Color(0.4, 0.85, 1.0)
 	else:
 		stratagem_label.modulate = Color(1, 1, 1)
