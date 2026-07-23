@@ -11,7 +11,7 @@ const SHEETS := {
 	"dash": {"path": "res://assets/player/dash.png", "frame": Vector2i(48, 48), "count": 9, "fps": 16.0, "loop": false},
 	"hurt": {"path": "res://assets/player/hurt.png", "frame": Vector2i(48, 48), "count": 4, "fps": 10.0, "loop": false},
 	"death": {"path": "res://assets/player/death.png", "frame": Vector2i(48, 48), "count": 10, "fps": 8.0, "loop": false},
-	"attack_light": {"path": "res://assets/player/attack_light.png", "frame": Vector2i(64, 64), "count": 6, "fps": 14.0, "loop": false},
+	"attack_light": {"path": "res://assets/player/jab.png", "frame": Vector2i(48, 48), "count": 10, "fps": 14.0, "loop": false},
 	"attack_heavy": {"path": "res://assets/player/attack_heavy.png", "frame": Vector2i(80, 64), "count": 10, "fps": 12.0, "loop": false},
 	"attack_special": {"path": "res://assets/player/attack_special.png", "frame": Vector2i(80, 64), "count": 9, "fps": 12.0, "loop": false},
 	"wall_slide": {"path": "res://assets/player/wall_slide.png", "frame": Vector2i(48, 48), "count": 3, "fps": 6.0, "loop": true},

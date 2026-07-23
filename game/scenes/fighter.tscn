@@ -9,17 +9,19 @@ size = Vector2(14, 28)
 size = Vector2(16, 30)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hit"]
-size = Vector2(22, 18)
+size = Vector2(26, 20)
 
 [node name="Fighter" type="CharacterBody2D"]
 collision_layer = 2
 collision_mask = 1
 floor_stop_on_slope = true
+safe_margin = 0.2
 script = ExtResource("1_fighter")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-position = Vector2(0, -24)
+position = Vector2(0, -15)
 texture_filter = 0
+offset = Vector2(0, 0)
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]
 position = Vector2(0, -14)
@@ -35,8 +37,8 @@ shape = SubResource("RectangleShape2D_hurt")
 
 [node name="Hitbox" type="Area2D" parent="."]
 collision_layer = 4
-collision_mask = 0
-monitoring = false
+collision_mask = 8
+monitoring = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
 position = Vector2(22, -12)
@@ -44,4 +46,4 @@ shape = SubResource("RectangleShape2D_hit")
 disabled = true
 
 [node name="ProjectileSpawn" type="Marker2D" parent="."]
-position = Vector2(14, -18)
+position = Vector2(16, -18)

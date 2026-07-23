@@ -62,9 +62,13 @@ var _attack_damage: float = 0.0
 var _hit_connected: bool = false
 var _spawn_pos: Vector2
 var _kunai_scene: PackedScene
+var _fireball_scene: PackedScene
 var _log_scene: PackedScene
 var _was_on_floor: bool = true
 var _dir_pressed: Dictionary = {"left": false, "right": false, "up": false, "down": false}
+var _special_projectile_spawned: bool = false
+const SPRITE_Y_48 := -15.0
+const SPRITE_Y_64 := -15.0
 
 
 func _ready() -> void:
@@ -73,18 +77,21 @@ func _ready() -> void:
 	_prefix = "p1" if player_id == 1 else "p2"
 	_spawn_pos = global_position
 	_kunai_scene = preload("res://scenes/kunai.tscn")
+	_fireball_scene = preload("res://scenes/fireball.tscn")
 	_log_scene = preload("res://scenes/substitution_log.tscn")
 	sprite.sprite_frames = SpriteSheets.build()
 	sprite.modulate = tint
+	sprite.position.y = SPRITE_Y_48
 	sprite.play("idle")
 	hitbox.add_to_group("fighter_hitbox")
 	hurtbox.add_to_group("fighter_hurtbox")
 	hitbox_shape.disabled = true
-	hitbox.monitoring = false
+	hitbox.monitoring = true
 	hitbox.monitorable = true
 	hurtbox.monitoring = true
 	hurtbox.monitorable = true
 	hurtbox.area_entered.connect(_on_hurtbox_area_entered)
+	hitbox.area_entered.connect(_on_hitbox_area_entered)
 	_mudra.sequence_changed.connect(_on_mudra_sequence)
 	_mudra.special_armed.connect(_on_mudra_armed)
 	_apply_facing()
@@ -215,9 +222,6 @@ func _process_grounded(delta: float) -> void:
 	if not is_on_floor():
 		_enter_state(State.JUMP)
 		return
-	if is_on_wall() and axis == facing and not is_on_floor():
-		_enter_state(State.WALL_SLIDE)
-		return
 
 	if absf(axis) > 0.1:
 		if state != State.RUN:
@@ -237,24 +241,28 @@ func _process_air(delta: float) -> void:
 	move_and_slide()
 	if is_on_floor():
 		_enter_state(State.IDLE)
-	elif is_on_wall() and axis == facing:
+		return
+	# Wall slide uniquement en descente — évite le "super jump" collé au mur.
+	if velocity.y >= 0.0 and is_on_wall() and axis == facing:
 		_enter_state(State.WALL_SLIDE)
 
 
 func _process_wall_slide(delta: float) -> void:
 	var axis := _move_axis()
-	velocity.x = axis * move_speed * 0.2
-	velocity.y = minf(velocity.y + gravity * 0.35 * delta, 120.0)
-	chakra = maxf(0.0, chakra - 12.0 * delta)
+	# Pas de wall-jump boost : on glisse seulement, saut = petit écartement.
+	velocity.x = axis * move_speed * 0.15
+	velocity.y = minf(velocity.y + gravity * 0.55 * delta, 160.0)
+	chakra = maxf(0.0, chakra - 10.0 * delta)
 	move_and_slide()
-	if is_on_floor() or not is_on_wall() or chakra <= 0.0:
+	if is_on_floor() or not is_on_wall() or chakra <= 0.0 or velocity.y < 0.0:
 		_enter_state(State.JUMP if not is_on_floor() else State.IDLE)
 		return
 	if Input.is_action_just_pressed("%s_jump" % _prefix) and chakra >= 5.0:
 		chakra -= 5.0
 		facing = -facing
 		_apply_facing()
-		velocity = Vector2(facing * move_speed * 1.2, jump_velocity * 0.85)
+		# Petit push-off, pas un second saut plein.
+		velocity = Vector2(facing * move_speed * 1.1, jump_velocity * 0.45)
 		_enter_state(State.JUMP)
 
 
@@ -281,7 +289,12 @@ func _process_attack(delta: float) -> void:
 			recovery = LIGHT_RECOVERY
 
 	var t := _state_time
-	if t < startup:
+	if _attack_kind == "special":
+		hitbox_shape.disabled = true
+		if t >= startup and not _special_projectile_spawned:
+			_special_projectile_spawned = true
+			_spawn_fireball()
+	elif t < startup:
 		hitbox_shape.disabled = true
 	elif t < startup + active:
 		hitbox_shape.disabled = false
@@ -324,17 +337,28 @@ func _process_hurt(delta: float) -> void:
 func _start_attack(kind: String) -> void:
 	_attack_kind = kind
 	_hit_connected = false
+	_special_projectile_spawned = false
 	match kind:
 		"heavy":
 			_attack_damage = heavy_damage
+			sprite.position.y = SPRITE_Y_64
 			sprite.play("attack_heavy")
 		"special":
 			_attack_damage = special_damage
+			sprite.position.y = SPRITE_Y_64
 			sprite.play("attack_special")
 		_:
 			_attack_damage = light_damage
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("attack_light")
 	_enter_state(State.ATTACK)
+
+
+func _spawn_fireball() -> void:
+	var ball := _fireball_scene.instantiate()
+	ball.setup(self, facing)
+	ball.global_position = spawn_point.global_position
+	get_parent().add_child(ball)
 
 
 func _try_dodge() -> void:
@@ -362,7 +386,6 @@ func _try_substitute() -> void:
 	var dir := facing if axis == 0 else (1 if axis > 0 else -1)
 	facing = dir
 	_apply_facing()
-	# Téléport court latéral (pas derrière l'adversaire).
 	global_position.x += dir * substitute_distance
 	visible = false
 	sprite.play("dash")
@@ -394,17 +417,22 @@ func _enter_state(new_state: State) -> void:
 	_state_time = 0.0
 	match new_state:
 		State.IDLE:
-			if sprite.animation != "land" or not sprite.is_playing():
-				sprite.play("idle")
+			sprite.position.y = SPRITE_Y_48
+			sprite.play("idle")
 		State.RUN:
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("run")
 		State.JUMP:
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("jump")
 		State.WALL_SLIDE:
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("wall_slide")
 		State.HURT:
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("hurt")
 		State.DEAD:
+			sprite.position.y = SPRITE_Y_48
 			sprite.play("death")
 			invulnerable = true
 			hitbox_shape.disabled = true
@@ -425,20 +453,19 @@ func _apply_facing() -> void:
 
 
 func _position_hitbox() -> void:
-	var reach := 22.0
+	var reach := 24.0
 	match _attack_kind:
 		"heavy":
-			reach = 34.0
-		"special":
-			reach = 40.0
-	hitbox.position.x = reach * facing
-	hitbox.position.y = -8.0
+			reach = 36.0
+		_:
+			reach = 24.0
+	hitbox.position = Vector2(reach * facing, -12.0)
 
 
 func _on_hurtbox_area_entered(area: Area2D) -> void:
 	if area == hitbox:
 		return
-	if area.is_in_group("kunai_hit"):
+	if area.is_in_group("kunai_hit") or area.is_in_group("fireball_hit"):
 		return
 	if not area.is_in_group("fighter_hitbox"):
 		return
@@ -453,16 +480,34 @@ func _on_hurtbox_area_entered(area: Area2D) -> void:
 	take_hit(payload.damage, payload.knockback, payload.facing)
 
 
+func _on_hitbox_area_entered(area: Area2D) -> void:
+	if hitbox_shape.disabled or state != State.ATTACK:
+		return
+	if _attack_kind == "special":
+		return
+	if not area.is_in_group("fighter_hurtbox"):
+		return
+	var victim := area.get_parent()
+	if victim == null or victim == self:
+		return
+	var payload: Variant = consume_hit()
+	if payload == null:
+		return
+	if victim.has_method("take_hit"):
+		victim.take_hit(payload.damage, payload.knockback, payload.facing)
+
+
 func consume_hit() -> Variant:
 	if state != State.ATTACK or _hit_connected:
 		return null
 	if hitbox_shape.disabled:
 		return null
 	_hit_connected = true
+	var kb_x := 130.0 if _attack_kind == "light" else 190.0
 	return {
 		"damage": _attack_damage,
 		"facing": facing,
-		"knockback": Vector2(facing * (120.0 if _attack_kind == "light" else 180.0), -60.0),
+		"knockback": Vector2(facing * kb_x, -55.0),
 	}
 
 
