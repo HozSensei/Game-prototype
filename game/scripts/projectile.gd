@@ -139,6 +139,6 @@ func _on_area_entered(area: Area2D) -> void:
 	if fighter.has_method("take_hit"):
 		_spent = true
 		var knock_dir := velocity.normalized() if velocity.length_squared() > 1.0 else Vector2.RIGHT
-		fighter.take_hit(damage, knock_dir * 100.0 + Vector2(0, -40.0), int(signf(knock_dir.x)))
+		fighter.take_hit(damage, knock_dir * 100.0 + Vector2(0, -40.0), int(signf(knock_dir.x)), 0.22)
 		_drop_pickup()
 		queue_free()

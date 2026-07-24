@@ -57,5 +57,5 @@ func _on_area_entered(area: Area2D) -> void:
 	if fighter.has_method("take_hit"):
 		_spent = true
 		var knock := velocity.normalized() if velocity.length_squared() > 1.0 else Vector2.RIGHT
-		fighter.take_hit(damage, knock * 160.0 + Vector2(0, -80.0), int(signf(knock.x)))
+		fighter.take_hit(damage, knock * 160.0 + Vector2(0, -80.0), int(signf(knock.x)), 0.36)
 		queue_free()
