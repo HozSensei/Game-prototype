@@ -9,7 +9,8 @@ extends CanvasLayer
 @onready var p2_chakra: ProgressBar = $Root/P2/Chakra
 @onready var p2_mudra: Label = $Root/P2/Mudra
 @onready var p2_title: Label = $Root/P2/Title
-@onready var help: Label = $Root/Help
+@onready var help: Label = $Root/HelpPanel/Help
+@onready var help_panel: PanelContainer = $Root/HelpPanel
 
 
 func _ready() -> void:
@@ -22,8 +23,20 @@ func _ready() -> void:
 	_style_bar(p2_hp, Color(0.75, 0.18, 0.2), Color(0.2, 0.22, 0.26))
 	_style_bar(p1_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
 	_style_bar(p2_chakra, Color(0.2, 0.55, 0.95), Color(0.2, 0.22, 0.26))
+	_style_help_panel()
 	_on_pads_changed(InputSetup.p1_device, InputSetup.p2_device)
 	_on_mode_changed(InputSetup.mode_name, InputSetup.pad_count)
+
+
+func _style_help_panel() -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.1, 0.13, 0.72)
+	style.set_corner_radius_all(4)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	help_panel.add_theme_stylebox_override("panel", style)
 
 
 func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:
@@ -41,11 +54,11 @@ func _style_bar(bar: ProgressBar, fill: Color, bg: Color) -> void:
 func _on_mode_changed(mode_name: String, _pad_count: int) -> void:
 	match mode_name:
 		"solo_kbm":
-			help.text = "SOLO clavier: ZQSD | Souris vise | LMB mêlée | RMB jet | Ctrl stance (↑↓←→ sphère / ↑↑ mur) + LMB | Q munition | F katana | E sub | Shift roll | Espace\nBranche 1 manette pour jouer au pad, 2 manettes pour le duel."
+			help.text = "ZQSD · souris · LMB mêlée · RMB jet · Ctrl stance+LMB · Q/F/E/Shift/Espace"
 		"solo_pad":
-			help.text = "SOLO manette: StickG move | StickD vise | LB stance + D-pad + X confirm | X/Y mêlée | B jet | RB roll | LT sub | R3 munition | Start restart\nDébranche la manette pour repasser clavier/souris."
+			help.text = "LB stance+X · StickD vise · X/Y mêlée · B jet · LT sub · RB roll · R3 munition"
 		_:
-			help.text = "DUEL 2 manettes: LB stance + D-pad + X confirm | StickD vise | X/Y mêlée | B jet | RB roll | LT sub | R3 munition | Start restart"
+			help.text = "LB stance+X · StickD vise · X/Y · B jet · LT sub · RB roll · R3 · Start"
 
 
 func _on_pads_changed(p1_device: int, p2_device: int) -> void:

@@ -29,8 +29,10 @@ func _apply_visual() -> void:
 	else:
 		sprite.sprite_frames = WeaponAtlas.make_frames(WeaponAtlas.SHURIKEN_FLY, WeaponAtlas.SHURIKEN_STUCK)
 		sprite.play("stuck")
-		sprite.rotation = 0.0
-	scale = Vector2(1.4, 1.4)
+		sprite.rotation = _stuck_rotation
+	z_as_relative = false
+	z_index = -1
+	scale = Vector2(0.7, 0.7)
 
 
 func _on_body_entered(body: Node) -> void:

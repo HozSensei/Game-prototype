@@ -9,9 +9,9 @@ enum State { IDLE, RUN, JUMP, ATTACK, DODGE, SUBSTITUTE, HURT, DEAD, WALL_SLIDE,
 
 @export_group("Movement")
 @export var move_speed: float = 140.0
-@export var jump_velocity: float = -320.0
+@export var jump_velocity: float = -480.0
 @export var gravity: float = 900.0
-@export var max_falls_speed: float = 420.0
+@export var max_falls_speed: float = 480.0
 
 @export_group("Combat")
 @export var max_health: float = 100.0
@@ -26,27 +26,34 @@ enum State { IDLE, RUN, JUMP, ATTACK, DODGE, SUBSTITUTE, HURT, DEAD, WALL_SLIDE,
 @export var defense_chakra_cost: float = 25.0
 @export var dodge_chakra_cost: float = 8.0
 @export var substitute_distance: float = 56.0
-@export var wall_jump_velocity: float = -300.0
-@export var wall_jump_push: float = 210.0
+@export var wall_jump_velocity: float = -440.0
+@export var wall_jump_push: float = 220.0
 @export var max_ammo: int = 6
 
-const LIGHT_STARTUP := 0.06
-const LIGHT_ACTIVE := 0.14
-const LIGHT_RECOVERY := 0.16
-const HEAVY_STARTUP := 0.18
-const HEAVY_ACTIVE := 0.18
-const HEAVY_RECOVERY := 0.38
-const SPECIAL_STARTUP := 0.18
-const SPECIAL_ACTIVE := 0.16
-const SPECIAL_RECOVERY := 0.35
-const DODGE_DURATION := 0.32
-const DODGE_IFRAMES := 0.22
+const LIGHT_STARTUP := 0.05
+const LIGHT_ACTIVE := 0.11
+const LIGHT_RECOVERY := 0.09
+const HEAVY_STARTUP := 0.14
+const HEAVY_ACTIVE := 0.14
+const HEAVY_RECOVERY := 0.28
+const SPECIAL_STARTUP := 0.16
+const SPECIAL_ACTIVE := 0.14
+const SPECIAL_RECOVERY := 0.28
+const DODGE_DURATION := 0.30
+const DODGE_IFRAMES := 0.20
 const SUBSTITUTE_DURATION := 0.18
-const HURT_DURATION := 0.28
+const HITSTUN_LIGHT := 0.26
+const HITSTUN_HEAVY := 0.40
 const WALL_COYOTE := 0.12
 const SPRITE_Y_48 := -15.0
 const SPRITE_Y_64 := -15.0
 const AIM_STICK_DEADZONE := 0.28
+## Drift pendant une attaque (0 = planté, 1 = course normale).
+const ATTACK_MOVE_LIGHT := 0.62
+const ATTACK_MOVE_HEAVY := 0.18
+const ATTACK_MOVE_SPECIAL := 0.10
+## DI faible pendant le hitstun (Brawlhalla-like).
+const HURT_DI := 55.0
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var hurtbox: Area2D = $Hurtbox
@@ -84,6 +91,9 @@ var _wall_dir: int = 0
 var _wall_coyote: float = 0.0
 var _in_stance: bool = false
 var _blocked_melee_confirm: bool = false
+var _hitstun_time: float = HITSTUN_LIGHT
+var _dodge_buffered: bool = false
+var _attack_can_cancel: bool = false
 
 
 func _ready() -> void:
@@ -186,6 +196,8 @@ func reset_round(pos: Vector2) -> void:
 	_mudra.reset()
 	_in_stance = false
 	_pending_technique = ""
+	_dodge_buffered = false
+	_attack_can_cancel = false
 	visible = true
 	controllable = InputSetup.is_player_active(player_id)
 	_enter_state(State.IDLE)
@@ -201,7 +213,7 @@ func pickup_ammo(_kind: int) -> bool:
 	return true
 
 
-func take_hit(amount: float, knockback: Vector2, from_facing: int) -> void:
+func take_hit(amount: float, knockback: Vector2, from_facing: int, hitstun: float = HITSTUN_LIGHT) -> void:
 	if state == State.DEAD or invulnerable:
 		return
 	if _in_stance:
@@ -211,6 +223,8 @@ func take_hit(amount: float, knockback: Vector2, from_facing: int) -> void:
 	facing = -from_facing
 	_apply_facing()
 	hitbox_shape.disabled = true
+	_hitstun_time = hitstun
+	_dodge_buffered = false
 	if health <= 0.0:
 		_enter_state(State.DEAD)
 		GameBus.fighter_defeated.emit(self)
@@ -256,9 +270,20 @@ func _process_stratagem(delta: float) -> void:
 
 
 func _handle_action_inputs() -> void:
-	if state in [State.DEAD, State.HURT, State.SUBSTITUTE]:
+	if state in [State.DEAD, State.SUBSTITUTE]:
 		return
-	if state == State.ATTACK or state == State.DODGE:
+	# Pendant le hitstun : buffer le dodge pour sortir dès que possible.
+	if state == State.HURT:
+		if Input.is_action_just_pressed("%s_dodge" % _prefix):
+			_dodge_buffered = true
+		return
+	# Recovery d'attaque : dodge-cancel (défense / chase) autorisé.
+	if state == State.ATTACK:
+		if _attack_can_cancel and Input.is_action_just_pressed("%s_dodge" % _prefix):
+			hitbox_shape.disabled = true
+			_try_dodge()
+		return
+	if state == State.DODGE:
 		return
 	if _in_stance or state == State.STRATAGEM:
 		# Pendant la stance : seulement mudras + confirm (géré ailleurs)
@@ -325,7 +350,8 @@ func _try_cast_armed() -> void:
 func _cast_defense_wall() -> void:
 	var wall := _wall_scene.instantiate()
 	wall.setup(self, facing)
-	wall.global_position = global_position + Vector2(facing * 28.0, -8.0)
+	# Ancre le bas du mur au sol (origine du fighter = pieds).
+	wall.global_position = global_position + Vector2(facing * 28.0, -26.0)
 	get_parent().add_child(wall)
 	_pending_technique = ""
 
@@ -429,20 +455,36 @@ func _update_wall_memory() -> void:
 
 
 func _process_attack(delta: float) -> void:
-	velocity.x = move_toward(velocity.x, 0.0, 800.0 * delta)
-	velocity.y = minf(velocity.y + gravity * delta, max_falls_speed)
-	move_and_slide()
 	var startup: float
 	var active: float
 	var recovery: float
+	var move_scale: float
 	match _attack_kind:
 		"heavy":
 			startup = HEAVY_STARTUP; active = HEAVY_ACTIVE; recovery = HEAVY_RECOVERY
+			move_scale = ATTACK_MOVE_HEAVY
 		"special":
 			startup = SPECIAL_STARTUP; active = SPECIAL_ACTIVE; recovery = SPECIAL_RECOVERY
+			move_scale = ATTACK_MOVE_SPECIAL
 		_:
 			startup = LIGHT_STARTUP; active = LIGHT_ACTIVE; recovery = LIGHT_RECOVERY
+			move_scale = ATTACK_MOVE_LIGHT
+			# Confirm de hit : recovery plus courte → avantage d'enchaînement.
+			if _hit_connected:
+				recovery *= 0.65
+
+	var axis := _move_axis()
+	var target_x := axis * move_speed * move_scale
+	# Conserve un peu d'élan au lieu de freiner net (feeling planté).
+	velocity.x = move_toward(velocity.x, target_x, move_speed * 6.0 * delta)
+	velocity.y = minf(velocity.y + gravity * delta, max_falls_speed)
+	if absf(axis) > 0.1 and _attack_kind == "light":
+		facing = 1 if axis > 0 else -1
+		_apply_facing()
+	move_and_slide()
+
 	var t := _state_time
+	_attack_can_cancel = t >= startup + active
 	if _attack_kind == "special":
 		hitbox_shape.disabled = true
 		if t >= startup and not _special_projectile_spawned:
@@ -458,6 +500,7 @@ func _process_attack(delta: float) -> void:
 		hitbox_shape.disabled = true
 	if t >= startup + active + recovery:
 		hitbox_shape.disabled = true
+		_attack_can_cancel = false
 		_enter_state(State.IDLE if is_on_floor() else State.JUMP)
 
 
@@ -481,10 +524,23 @@ func _process_substitute(delta: float) -> void:
 
 
 func _process_hurt(delta: float) -> void:
-	velocity.x = move_toward(velocity.x, 0.0, 400.0 * delta)
+	# DI : influence faible sur la trajectoire pendant le hitstun.
+	var axis := 0.0
+	if controllable:
+		var left := Input.is_action_pressed("%s_left" % _prefix)
+		var right := Input.is_action_pressed("%s_right" % _prefix)
+		axis = float(right) - float(left)
+		if Input.is_action_just_pressed("%s_dodge" % _prefix):
+			_dodge_buffered = true
+	velocity.x += axis * HURT_DI * delta
+	velocity.x = move_toward(velocity.x, 0.0, 280.0 * delta)
 	velocity.y = minf(velocity.y + gravity * delta, max_falls_speed)
 	move_and_slide()
-	if _state_time >= HURT_DURATION:
+	if _state_time >= _hitstun_time:
+		if _dodge_buffered:
+			_dodge_buffered = false
+			if _try_dodge(true):
+				return
 		_enter_state(State.IDLE if is_on_floor() else State.JUMP)
 
 
@@ -523,17 +579,27 @@ func _spawn_fireball() -> void:
 	_pending_technique = ""
 
 
-func _try_dodge() -> void:
+func _try_dodge(from_hitstun: bool = false) -> bool:
 	if chakra < dodge_chakra_cost:
-		return
+		return false
+	if state in [State.DEAD, State.SUBSTITUTE]:
+		return false
+	if state == State.HURT and not from_hitstun:
+		return false
 	chakra -= dodge_chakra_cost
 	var axis := _move_axis()
+	# Pendant hitstun _move_axis peut être 0 : lire l'input directement.
+	if axis == 0.0 and controllable:
+		var left := Input.is_action_pressed("%s_left" % _prefix)
+		var right := Input.is_action_pressed("%s_right" % _prefix)
+		axis = float(right) - float(left)
 	var dir := facing if axis == 0 else (1 if axis > 0 else -1)
 	facing = dir
 	_apply_facing()
-	velocity = Vector2(dir * move_speed * 1.8, velocity.y * 0.2)
+	velocity = Vector2(dir * move_speed * 1.9, velocity.y * 0.25)
 	sprite.play("roll")
 	_enter_state(State.DODGE)
+	return true
 
 
 func _try_substitute() -> void:
@@ -607,8 +673,9 @@ func _apply_facing() -> void:
 
 
 func _position_hitbox() -> void:
-	var reach := 28.0 if _attack_kind != "heavy" else 42.0
-	hitbox.position = Vector2(reach * facing, -14.0)
+	# Forme centrée sur Hitbox (offset shape = 0) — couvre bras + corps proche.
+	var reach := 18.0 if _attack_kind != "heavy" else 28.0
+	hitbox.position = Vector2(reach * facing, -18.0)
 
 
 func _resize_hitbox(heavy: bool) -> void:
@@ -616,7 +683,8 @@ func _resize_hitbox(heavy: bool) -> void:
 	if shape == null:
 		shape = RectangleShape2D.new()
 		hitbox_shape.shape = shape
-	shape.size = Vector2(38, 30) if heavy else Vector2(30, 26)
+	# Plus généreux : le jab (poing ~x21) doit toucher sans viser le pixel exact.
+	shape.size = Vector2(52, 36) if heavy else Vector2(44, 34)
 
 
 func _poll_melee_hits() -> void:
@@ -648,7 +716,7 @@ func _on_hurtbox_area_entered(area: Area2D) -> void:
 	var payload: Variant = attacker.call("consume_hit")
 	if payload == null:
 		return
-	take_hit(payload.damage, payload.knockback, payload.facing)
+	take_hit(payload.damage, payload.knockback, payload.facing, payload.get("hitstun", HITSTUN_LIGHT))
 
 
 func _on_hitbox_area_entered(area: Area2D) -> void:
@@ -665,7 +733,7 @@ func _on_hitbox_area_entered(area: Area2D) -> void:
 	if payload == null:
 		return
 	if victim.has_method("take_hit"):
-		victim.take_hit(payload.damage, payload.knockback, payload.facing)
+		victim.take_hit(payload.damage, payload.knockback, payload.facing, payload.get("hitstun", HITSTUN_LIGHT))
 
 
 func consume_hit() -> Variant:
@@ -674,11 +742,15 @@ func consume_hit() -> Variant:
 	if hitbox_shape.disabled:
 		return null
 	_hit_connected = true
-	var kb_x := 130.0 if _attack_kind == "light" else 190.0
+	var is_heavy := _attack_kind == "heavy"
+	var kb_x := 110.0 if not is_heavy else 175.0
+	var kb_y := -70.0 if not is_heavy else -95.0
+	var stun := HITSTUN_LIGHT if not is_heavy else HITSTUN_HEAVY
 	return {
 		"damage": _attack_damage,
 		"facing": facing,
-		"knockback": Vector2(facing * kb_x, -55.0),
+		"knockback": Vector2(facing * kb_x, kb_y),
+		"hitstun": stun,
 	}
 
 

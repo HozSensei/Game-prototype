@@ -4,14 +4,14 @@ extends Area2D
 enum Kind { KUNAI, SHURIKEN }
 
 @export var kind: Kind = Kind.KUNAI
-@export var throw_speed: float = 320.0
+@export var throw_speed: float = 1760.0
 @export var fall_gravity: float = 520.0
 @export var damage: float = 8.0
-@export var lifetime: float = 2.2
-@export var stuck_lifetime: float = 0.35
-@export var visual_scale: float = 1.5
+@export var lifetime: float = 3.5
+@export var stuck_lifetime: float = 0.45
+@export var visual_scale: float = 0.7
 
-var velocity: Vector2 = Vector2.RIGHT * 320.0
+var velocity: Vector2 = Vector2.RIGHT * 1760.0
 var _owner: Node = null
 var _spent: bool = false
 var _stuck: bool = false
@@ -28,12 +28,12 @@ func setup(owner_fighter: Node, aim_dir: Vector2, projectile_kind: Kind = Kind.K
 		dir = Vector2.RIGHT
 	dir = dir.normalized()
 	if kind == Kind.SHURIKEN:
-		throw_speed = 360.0
-		fall_gravity = 480.0
+		throw_speed = 1900.0
+		fall_gravity = 500.0
 		damage = 7.0
 	else:
-		throw_speed = 320.0
-		fall_gravity = 540.0
+		throw_speed = 1760.0
+		fall_gravity = 560.0
 		damage = 8.0
 	velocity = dir * throw_speed
 
@@ -41,6 +41,8 @@ func setup(owner_fighter: Node, aim_dir: Vector2, projectile_kind: Kind = Kind.K
 func _ready() -> void:
 	_pickup_scene = preload("res://scenes/ammo_pickup.tscn")
 	add_to_group("kunai_hit")
+	z_as_relative = false
+	z_index = 2
 	scale = Vector2(visual_scale, visual_scale)
 	if kind == Kind.KUNAI:
 		sprite.sprite_frames = WeaponAtlas.make_frames(WeaponAtlas.KUNAI_FLY, WeaponAtlas.KUNAI_STUCK)
@@ -70,6 +72,15 @@ func _orient_to_velocity(delta: float = 0.016) -> void:
 		sprite.rotation += delta * 16.0 * signf(velocity.x if absf(velocity.x) > 0.01 else 1.0)
 
 
+func _stuck_rotation_for_impact() -> float:
+	var impact := velocity.angle() if velocity.length_squared() > 1.0 else 0.0
+	if kind == Kind.KUNAI:
+		# Pointe vers la droite dans l'atlas → aligne sur l'impact.
+		return impact
+	# Shuriken en X : une pointe suit la direction d'impact.
+	return impact - PI * 0.25
+
+
 func _on_lifetime_timeout() -> void:
 	if not _stuck:
 		_drop_pickup()
@@ -82,10 +93,12 @@ func _stick(on_wall: Node = null) -> void:
 	_stuck = true
 	_spent = true
 	sprite.play("stuck")
-	if kind == Kind.KUNAI:
-		sprite.rotation = velocity.angle()
-	else:
-		sprite.rotation = 0.0
+	sprite.rotation = _stuck_rotation_for_impact()
+	# Enfonce la pointe et dessine derrière les solids pour masquer la partie plantée.
+	var impact_dir := velocity.normalized() if velocity.length_squared() > 1.0 else Vector2.RIGHT
+	position += impact_dir * 8.0
+	z_as_relative = false
+	z_index = -1
 	set_deferred("monitoring", false)
 	if on_wall and on_wall.has_method("take_damage"):
 		on_wall.take_damage(1)
@@ -105,7 +118,7 @@ func _drop_pickup() -> void:
 		return
 	var pickup := _pickup_scene.instantiate()
 	parent.add_child(pickup)
-	pickup.setup(int(kind), global_position, sprite.rotation if kind == Kind.KUNAI else 0.0)
+	pickup.setup(int(kind), global_position, sprite.rotation)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -126,6 +139,6 @@ func _on_area_entered(area: Area2D) -> void:
 	if fighter.has_method("take_hit"):
 		_spent = true
 		var knock_dir := velocity.normalized() if velocity.length_squared() > 1.0 else Vector2.RIGHT
-		fighter.take_hit(damage, knock_dir * 100.0 + Vector2(0, -40.0), int(signf(knock_dir.x)))
+		fighter.take_hit(damage, knock_dir * 100.0 + Vector2(0, -40.0), int(signf(knock_dir.x)), 0.22)
 		_drop_pickup()
 		queue_free()
