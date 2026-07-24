@@ -1,12 +1,12 @@
 extends Area2D
 ## Boule de feu (spéciale type Katon) — aimable + légère gravité.
 
-@export var speed: float = 260.0
-@export var fall_gravity: float = 280.0
+@export var speed: float = 1200.0
+@export var fall_gravity: float = 180.0
 @export var damage: float = 34.0
-@export var lifetime: float = 2.2
+@export var lifetime: float = 3.0
 
-var velocity: Vector2 = Vector2.RIGHT * 260.0
+var velocity: Vector2 = Vector2.RIGHT * 1200.0
 var _owner: Node = null
 var _spent: bool = false
 

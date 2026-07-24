@@ -9,9 +9,9 @@ enum State { IDLE, RUN, JUMP, ATTACK, DODGE, SUBSTITUTE, HURT, DEAD, WALL_SLIDE,
 
 @export_group("Movement")
 @export var move_speed: float = 140.0
-@export var jump_velocity: float = -320.0
+@export var jump_velocity: float = -480.0
 @export var gravity: float = 900.0
-@export var max_falls_speed: float = 420.0
+@export var max_falls_speed: float = 480.0
 
 @export_group("Combat")
 @export var max_health: float = 100.0
@@ -26,8 +26,8 @@ enum State { IDLE, RUN, JUMP, ATTACK, DODGE, SUBSTITUTE, HURT, DEAD, WALL_SLIDE,
 @export var defense_chakra_cost: float = 25.0
 @export var dodge_chakra_cost: float = 8.0
 @export var substitute_distance: float = 56.0
-@export var wall_jump_velocity: float = -300.0
-@export var wall_jump_push: float = 210.0
+@export var wall_jump_velocity: float = -440.0
+@export var wall_jump_push: float = 220.0
 @export var max_ammo: int = 6
 
 const LIGHT_STARTUP := 0.06
@@ -325,7 +325,8 @@ func _try_cast_armed() -> void:
 func _cast_defense_wall() -> void:
 	var wall := _wall_scene.instantiate()
 	wall.setup(self, facing)
-	wall.global_position = global_position + Vector2(facing * 28.0, -8.0)
+	# Ancre le bas du mur au sol (origine du fighter = pieds).
+	wall.global_position = global_position + Vector2(facing * 28.0, -26.0)
 	get_parent().add_child(wall)
 	_pending_technique = ""
 
@@ -607,8 +608,9 @@ func _apply_facing() -> void:
 
 
 func _position_hitbox() -> void:
-	var reach := 28.0 if _attack_kind != "heavy" else 42.0
-	hitbox.position = Vector2(reach * facing, -14.0)
+	# Forme centrée sur Hitbox (offset shape = 0) — couvre bras + corps proche.
+	var reach := 18.0 if _attack_kind != "heavy" else 28.0
+	hitbox.position = Vector2(reach * facing, -18.0)
 
 
 func _resize_hitbox(heavy: bool) -> void:
@@ -616,7 +618,8 @@ func _resize_hitbox(heavy: bool) -> void:
 	if shape == null:
 		shape = RectangleShape2D.new()
 		hitbox_shape.shape = shape
-	shape.size = Vector2(38, 30) if heavy else Vector2(30, 26)
+	# Plus généreux : le jab (poing ~x21) doit toucher sans viser le pixel exact.
+	shape.size = Vector2(52, 36) if heavy else Vector2(44, 34)
 
 
 func _poll_melee_hits() -> void:
